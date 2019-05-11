@@ -42,7 +42,8 @@ func main() {
         case x := <- buffer:
             fmt.Println("valid buffer:", x)
         case ch1 <- i: {
-            fmt.Println("send data %d into channel", i)
+            // fmt.Println("send data", i, "into channel")
+            fmt.Printf("send data %d into channel", i)
         }
         default :
             fmt.Println("do nothing")
