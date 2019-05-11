@@ -7,8 +7,9 @@ import (
 
 func main() {
     buffer := make (chan int)
+    defer close(buffer)
     go worker(buffer)
-    for flag, index:= true, 0; flag; {
+    for flag, index := true, 0; flag; {
         select {
         case num := <- buffer : {
             fmt.Println("buffer recieve:", num)
@@ -21,13 +22,20 @@ func main() {
         }
         }
     }
-    ch := make(chan int, 4) // 0, 1, other length will lead to different result
+
+    ch := make(chan int) // 0, 1, other length will lead to different result
+    close(ch)
+
+    ch1 := make(chan int, 4) // 0, 1, other length will lead to different result
+    defer close(ch1)
     go worker(buffer)
     for i := 0; i < 10; i++ {
         select {
+        case x := <- ch:
+            fmt.Println("invalid ch:", x)
         case x := <- buffer:
-            fmt.Println(x)
-        case ch <- i: {
+            fmt.Println("valid buffer:", x)
+        case ch1 <- i: {
             fmt.Println("send data %d into channel", i)
         }
         default :
