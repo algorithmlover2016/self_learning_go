@@ -37,6 +37,8 @@ func main() {
         select {
         case x := <- ch:
             fmt.Println("invalid ch:", x)
+        case x := <- ch1:
+            fmt.Println("valid ch1:", x)
         case x := <- buffer:
             fmt.Println("valid buffer:", x)
         case ch1 <- i: {
