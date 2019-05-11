@@ -24,6 +24,10 @@ func main() {
     }
 
     ch := make(chan int) // 0, 1, other length will lead to different result
+    fmt.Println("zero length channel:", len(ch))
+    // fmt.Println("read zero length channel:", <- ch)
+    // ch <- 1
+    // fmt.Println("zero length channel:", <- ch)
     close(ch)
 
     ch1 := make(chan int, 4) // 0, 1, other length will lead to different result
