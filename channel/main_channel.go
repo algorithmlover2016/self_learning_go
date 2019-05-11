@@ -32,13 +32,10 @@ func main() {
 
     ch1 := make(chan int, 4) // 0, 1, other length will lead to different result
     defer close(ch1)
-    go worker(buffer)
     for i := 0; i < 10; i++ {
         select {
-        case x := <- ch:
-            fmt.Println("invalid ch:", x)
-        case x := <- buffer:
-            fmt.Println("valid buffer:", x)
+        case x := <- ch1:
+            fmt.Println("valid ch1:", x)
         case ch1 <- i: {
             // fmt.Println("send data", i, "into channel")
             fmt.Printf("send data %d into channel\n", i)
