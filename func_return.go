@@ -17,6 +17,7 @@ func main() {
 	if err, message := fun2(); err != nil {
 		fmt.Println(message)
 	}
+	fmt.Println(fmt.Sprintf("print integer %d", 10))
 }
 
 func fun1() (error, string) {
