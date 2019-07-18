@@ -10,24 +10,23 @@ import (
 	"time"
 )
 
-var (
-	DebugLogDir = "debug"
-	InfoLogDir  = "info"
-	WarnLogDir  = "warn"
-	ErrorLogDir = "error"
-	FatalLogDir = "fatal"
-	PanicLogDir = "panic"
-	LogFilename = "pcm.log"
+const (
+	DebugLogDir string = "debug"
+	InfoLogDir  string = "info"
+	WarnLogDir  string = "warn"
+	ErrorLogDir string = "error"
+	FatalLogDir string = "fatal"
+	PanicLogDir string = "panic"
 
-	AccessLogDir      = "access"
-	AccessDebugLogDir = "debug"
-	AccessInfoLogDir  = "info"
-	AccessWarnLogDir  = "warn"
-	AccessErrorLogDir = "error"
-	AccessFatalLogDir = "fatal"
-	AccessPanicLogDir = "panic"
-	AccessLogFilename = "access_pcm.log"
-	AccessLogger      = log.New()
+	LogFilename string = "pcm.log"
+
+	AccessLogDir      string = "access"
+	AccessLogFilename string = "access_pcm.log"
+)
+
+var (
+	AccessLogger = log.New()
+	Log          = log.New()
 )
 
 func init() {
@@ -35,160 +34,109 @@ func init() {
 	if err != nil {
 		LogDir = "/tmp/"
 	}
+
 	LogDir += "/log/"
 
-	AccessLogDir = path.Join(LogDir, AccessLogDir)
-	os.MkdirAll(AccessLogDir, 0777)
-	AccessDebugLogDir = path.Join(AccessLogDir, AccessDebugLogDir)
-	os.MkdirAll(AccessDebugLogDir, 0777)
-	AccessInfoLogDir = path.Join(AccessLogDir, AccessInfoLogDir)
-	os.MkdirAll(AccessInfoLogDir, 0777)
-	AccessWarnLogDir = path.Join(AccessLogDir, AccessWarnLogDir)
-	os.MkdirAll(AccessWarnLogDir, 0777)
-	AccessErrorLogDir = path.Join(AccessLogDir, AccessErrorLogDir)
-	os.MkdirAll(AccessErrorLogDir, 0777)
-	AccessFatalLogDir = path.Join(AccessLogDir, AccessFatalLogDir)
-	os.MkdirAll(AccessFatalLogDir, 0777)
-	AccessPanicLogDir = path.Join(AccessLogDir, AccessPanicLogDir)
-	os.MkdirAll(AccessPanicLogDir, 0777)
-
-	DebugLogDir = path.Join(LogDir, DebugLogDir)
-	os.MkdirAll(DebugLogDir, 0777)
-	InfoLogDir = path.Join(LogDir, InfoLogDir)
-	os.MkdirAll(InfoLogDir, 0777)
-	WarnLogDir = path.Join(LogDir, WarnLogDir)
-	os.MkdirAll(WarnLogDir, 0777)
-	ErrorLogDir = path.Join(LogDir, ErrorLogDir)
-	os.MkdirAll(ErrorLogDir, 0777)
-	FatalLogDir = path.Join(LogDir, FatalLogDir)
-	os.MkdirAll(FatalLogDir, 0777)
-	PanicLogDir = path.Join(LogDir, PanicLogDir)
-	os.MkdirAll(PanicLogDir, 0777)
+	// create log folder
+	for _, level := range log.AllLevels {
+		levelStr := level.String()
+		levelLogDir := path.Join(LogDir, levelStr)
+		os.MkdirAll(levelLogDir, 0777)
+		accessLevelLogDir := path.Join(LogDir, AccessLogDir, levelStr)
+		os.MkdirAll(accessLevelLogDir, 0777)
+	}
+	// add log Hook
+	AccessLogger.AddHook(newLfsHook(path.Join(LogDir, AccessLogDir), AccessLogFilename, AccessLogger, true))
+	// set logLevel
+	AccessLogger.SetLevel(log.TraceLevel)
+	Log.AddHook(newLfsHook(LogDir, LogFilename, Log, false))
+	Log.SetLevel(log.TraceLevel)
 }
 
-func initAccessLog() {
-	AccessLogger.Out = os.Stdout
-	accessBaseLogPath := path.Join(AccessLogDir, LogFilename)
-	accessWriter, err := rotatelogs.New(
-		accessBaseLogPath+".%Y%m%d%H%M",
-		rotatelogs.WithLinkName(accessBaseLogPath), // 生成软链，指向最新日志文件
-		rotatelogs.WithMaxAge(7*24*time.Hour),      // 文件最大保存时间
-		rotatelogs.WithRotationTime(1*time.Hour),   // 日志切割时间间隔
-	)
-	if err != nil {
-		log.Errorf("config access local file system logger error. %v", errors.WithStack(err))
-	} else {
-		AccessLogger.Out = accessWriter
-	}
-}
-
-func newLfsHook() log.Hook {
-	debugBaseLogPath := path.Join(DebugLogDir, LogFilename)
-	infoBaseLogPath := path.Join(InfoLogDir, LogFilename)
-	warnBaseLogPath := path.Join(WarnLogDir, LogFilename)
-	errorBaseLogPath := path.Join(ErrorLogDir, LogFilename)
-	fatalBaseLogPath := path.Join(FatalLogDir, LogFilename)
-	panicBaseLogPath := path.Join(PanicLogDir, LogFilename)
-	debugWriter, err := rotatelogs.New(
-		debugBaseLogPath+".%Y%m%d%H%M",
-		rotatelogs.WithLinkName(debugBaseLogPath), // 生成软链，指向最新日志文件
-		rotatelogs.WithMaxAge(7*24*time.Hour),     // 文件最大保存时间
-		rotatelogs.WithRotationTime(1*time.Hour),  // 日志切割时间间隔
-	)
-	if err != nil {
-		log.Errorf("config local file system logger error. %v", errors.WithStack(err))
-	}
-
-	infoWriter, err := rotatelogs.New(
-		infoBaseLogPath+".%Y%m%d%H%M",
-		rotatelogs.WithLinkName(infoBaseLogPath), // 生成软链，指向最新日志文件
-		rotatelogs.WithMaxAge(7*24*time.Hour),    // 文件最大保存时间
-		rotatelogs.WithRotationTime(1*time.Hour), // 日志切割时间间隔
-	)
-	if err != nil {
-		log.Errorf("config local file system logger error. %v", errors.WithStack(err))
-	}
-
-	warnWriter, err := rotatelogs.New(
-		warnBaseLogPath+".%Y%m%d%H%M",
-		rotatelogs.WithLinkName(warnBaseLogPath), // 生成软链，指向最新日志文件
-		rotatelogs.WithMaxAge(7*24*time.Hour),    // 文件最大保存时间
-		rotatelogs.WithRotationTime(1*time.Hour), // 日志切割时间间隔
-	)
-	if err != nil {
-		log.Errorf("config local file system logger error. %v", errors.WithStack(err))
-	}
-
-	errorWriter, err := rotatelogs.New(
-		errorBaseLogPath+".%Y%m%d%H%M",
-		rotatelogs.WithLinkName(errorBaseLogPath), // 生成软链，指向最新日志文件
-		rotatelogs.WithMaxAge(7*24*time.Hour),     // 文件最大保存时间
-		rotatelogs.WithRotationTime(1*time.Hour),  // 日志切割时间间隔
-	)
-	if err != nil {
-		log.Errorf("config local file system logger error. %v", errors.WithStack(err))
-	}
-
-	fatalWriter, err := rotatelogs.New(
-		fatalBaseLogPath+".%Y%m%d%H%M",
-		rotatelogs.WithLinkName(fatalBaseLogPath), // 生成软链，指向最新日志文件
-		rotatelogs.WithMaxAge(7*24*time.Hour),     // 文件最大保存时间
-		rotatelogs.WithRotationTime(1*time.Hour),  // 日志切割时间间隔
-	)
-	if err != nil {
-		log.Errorf("config local file system logger error. %v", errors.WithStack(err))
-	}
-
-	panicWriter, err := rotatelogs.New(
-		panicBaseLogPath+".%Y%m%d%H%M",
-		rotatelogs.WithLinkName(panicBaseLogPath), // 生成软链，指向最新日志文件
-		rotatelogs.WithMaxAge(7*24*time.Hour),     // 文件最大保存时间
-		rotatelogs.WithRotationTime(1*time.Hour),  // 日志切割时间间隔
-	)
-	if err != nil {
-		log.Errorf("config local file system logger error. %v", errors.WithStack(err))
+func newLfsHook(logDir string, logFile string, logInstance *log.Logger, color bool) log.Hook {
+	// make a map to save the logLevel -> rotatelogs.RotateLogs object
+	logPathWriterMap := make(map[string]*rotatelogs.RotateLogs)
+	for _, level := range log.AllLevels {
+		// change the type of log level to string
+		levelStr := level.String()
+		// get the destination of log path
+		levelLogPath := path.Join(logDir, levelStr, logFile)
+		// create the rotatelogs object
+		Writer, err := rotatelogs.New(
+			levelLogPath+".%Y%m%d%H%M",
+			rotatelogs.WithLinkName(levelLogPath),    // 生成软链，指向最新日志文件
+			rotatelogs.WithMaxAge(7*24*time.Hour),    // 文件最大保存时间
+			rotatelogs.WithRotationTime(1*time.Hour), // 日志切割时间间隔
+		)
+		if err != nil {
+			log.Errorf("config %s local file system logger error. %v", levelLogPath, errors.WithStack(err))
+			logPathWriterMap[levelStr] = nil
+		}
+		logPathWriterMap[levelStr] = Writer
 	}
 
 	lfsHook := lfshook.NewHook(lfshook.WriterMap{
-		log.DebugLevel: debugWriter, // 为不同级别设置不同的输出目的
-		log.InfoLevel:  infoWriter,
-		log.WarnLevel:  warnWriter,
-		log.ErrorLevel: errorWriter,
-		log.FatalLevel: fatalWriter,
-		log.PanicLevel: panicWriter,
-	}, &log.TextFormatter{DisableColors: true})
+		log.TraceLevel: logPathWriterMap[log.TraceLevel.String()], // 为不同级别设置不同的输出目的
+		log.DebugLevel: logPathWriterMap[log.DebugLevel.String()], // 为不同级别设置不同的输出目的
+		log.InfoLevel:  logPathWriterMap[log.InfoLevel.String()],
+		log.WarnLevel:  logPathWriterMap[log.WarnLevel.String()],
+		log.ErrorLevel: logPathWriterMap[log.ErrorLevel.String()],
+		log.FatalLevel: logPathWriterMap[log.FatalLevel.String()],
+		log.PanicLevel: logPathWriterMap[log.PanicLevel.String()],
+	}, &log.TextFormatter{DisableColors: color, DisableLevelTruncation: true})
 	return lfsHook
 }
 
 func main() {
-	initAccessLog()
-	log.AddHook(newLfsHook())
-	log.SetLevel(log.DebugLevel)
-	log.Info("hello world!")
+	Log.Info("hello world!")
 
-	AccessLogger.SetLevel(log.InfoLevel)
 	AccessLogger.Info("access log")
+	AccessLogger.WithFields(log.Fields{
+		"animal": "walrus",
+		"size":   10,
+	}).Trace("A group of walrus emerges from the ocean")
+
+	AccessLogger.WithFields(log.Fields{
+		"animal": "walrus",
+		"size":   10,
+	}).Debug("A group of walrus emerges from the ocean")
+
 	AccessLogger.WithFields(log.Fields{
 		"animal": "walrus",
 		"size":   10,
 	}).Info("A group of walrus emerges from the ocean")
 
-	log.WithFields(log.Fields{
+	AccessLogger.WithFields(log.Fields{
 		"animal": "walrus",
 		"size":   10,
-	}).Debug("A group of walrus emerges from the ocean")
+	}).Warn("A group of walrus emerges from the ocean")
 
-	log.WithFields(log.Fields{
+	AccessLogger.WithFields(log.Fields{
 		"animal": "walrus",
 		"size":   10,
-	}).Info("A group of walrus emerges from the ocean")
+	}).Error("A group of walrus emerges from the ocean")
 
-	log.WithFields(log.Fields{
+	Log.WithFields(log.Fields{
+		"omg":    true,
+		"number": 122,
+	}).Trace("The group's number increased tremendously!")
+
+	Log.WithFields(log.Fields{
+		"omg":    true,
+		"number": 122,
+	}).Debug("The group's number increased tremendously!")
+
+	Log.WithFields(log.Fields{
+		"omg":    true,
+		"number": 122,
+	}).Info("The group's number increased tremendously!")
+
+	Log.WithFields(log.Fields{
 		"omg":    true,
 		"number": 122,
 	}).Warn("The group's number increased tremendously!")
 
-	log.WithFields(log.Fields{
+	Log.WithFields(log.Fields{
 		"omg":    true,
 		"number": 100,
 	}).Fatal("The ice breaks!")
