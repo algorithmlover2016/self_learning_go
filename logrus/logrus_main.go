@@ -5,6 +5,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rifflock/lfshook"
 	log "github.com/sirupsen/logrus"
+	"io/ioutil"
 	"os"
 	"path"
 	"time"
@@ -30,6 +31,8 @@ var (
 )
 
 func init() {
+	AccessLogger.SetOutput(ioutil.Discard)
+	Log.SetOutput(ioutil.Discard)
 
 	LogDir, err := os.Getwd()
 	if err != nil {
