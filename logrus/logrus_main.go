@@ -31,8 +31,8 @@ var (
 	AccessLogger = log.New()
 	Log          = log.New()
 
-	LogDir = "/tmp/"
 	// configuration logs
+	LogDir   = "/tmp/"
 	pid      = os.Getpid()
 	program  = filepath.Base(os.Args[0])
 	host     = "unknownhost"
@@ -78,8 +78,9 @@ func init() {
 	userName = strings.Replace(userName, `\`, "_", -1)
 
 	LogDir = *flag.String("log_dir", "", "If non-empty, write log files in this directory")
-	if len(LogDir) == 0 {
-		LogDir, err := os.Getwd()
+	if len(LogDir) == 0 || strings.HasPrefix(LogDir, ".") {
+		var err error
+		LogDir, err = os.Getwd()
 		if err != nil {
 			LogDir = "/tmp/"
 		}
@@ -115,7 +116,8 @@ func newLfsHook(logDir string, color bool) log.Hook {
 
 		rotateLogPath := path.Join(logDir, levelStr,
 			fmt.Sprintf("%s.%s.%s.log.%s.%%Y%%m%%d-%%H%%M%%S.%d",
-				program, host, userName, upperLevelStr, pid))
+				// program, upperLevelStr, host, userName, 233))
+				program, upperLevelStr, host, userName, pid))
 
 		// create the rotatelogs object
 		Writer, err := rotatelogs.New(
