@@ -1,13 +1,18 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"github.com/lestrrat/go-file-rotatelogs"
 	"github.com/pkg/errors"
 	"github.com/rifflock/lfshook"
 	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"os"
+	"os/user"
 	"path"
+	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -19,27 +24,67 @@ const (
 	FatalLogDir string = "fatal"
 	PanicLogDir string = "panic"
 
-	LogFilename string = "pcm.log"
-
-	AccessLogDir      string = "access"
-	AccessLogFilename string = "access_pcm.log"
+	AccessLogDir string = "access"
 )
 
 var (
 	AccessLogger = log.New()
 	Log          = log.New()
+
+	LogDir = "/tmp/"
+	// configuration logs
+	pid      = os.Getpid()
+	program  = filepath.Base(os.Args[0])
+	host     = "unknownhost"
+	userName = "unknownuser"
 )
+
+// shortHostname returns its argument, truncating at the first period.
+// For instance, given "www.google.com" it returns "www".
+func shortHostname(hostname string) string {
+	if i := strings.Index(hostname, "."); i >= 0 {
+		return hostname[:i]
+	}
+	return hostname
+}
+
+// logName returns a new log file name containing tag, with start time t, and
+// the name for the symlink for tag.
+func logName(logLevelTag string) (name string) {
+	name = fmt.Sprintf("%s.%s.%s.log.%s.%d",
+		program,
+		host,
+		userName,
+		logLevelTag,
+		pid)
+	return
+}
 
 func init() {
 	AccessLogger.SetOutput(ioutil.Discard)
 	Log.SetOutput(ioutil.Discard)
 
-	LogDir, err := os.Getwd()
-	if err != nil {
-		LogDir = "/tmp/"
+	h, err := os.Hostname()
+	if err == nil {
+		host = shortHostname(h)
 	}
 
-	LogDir += "/log/"
+	current, err := user.Current()
+	if err == nil {
+		userName = current.Username
+	}
+
+	// Sanitize userName since it may contain filepath separators on Windows.
+	userName = strings.Replace(userName, `\`, "_", -1)
+
+	LogDir = *flag.String("log_dir", "", "If non-empty, write log files in this directory")
+	if len(LogDir) == 0 {
+		LogDir, err := os.Getwd()
+		if err != nil {
+			LogDir = "/tmp/"
+		}
+		LogDir += "/log/"
+	}
 
 	// create log folder
 	for _, level := range log.AllLevels {
@@ -50,24 +95,31 @@ func init() {
 		os.MkdirAll(accessLevelLogDir, 0777)
 	}
 	// add log Hook
-	AccessLogger.AddHook(newLfsHook(path.Join(LogDir, AccessLogDir), AccessLogFilename, true))
+	AccessLogger.AddHook(newLfsHook(path.Join(LogDir, AccessLogDir), true))
 	// set logLevel
 	AccessLogger.SetLevel(log.TraceLevel)
-	Log.AddHook(newLfsHook(LogDir, LogFilename, false))
+	Log.AddHook(newLfsHook(LogDir, false))
 	Log.SetLevel(log.TraceLevel)
 }
 
-func newLfsHook(logDir string, logFile string, color bool) log.Hook {
+func newLfsHook(logDir string, color bool) log.Hook {
 	// make a map to save the logLevel -> rotatelogs.RotateLogs object
 	logPathWriterMap := make(map[string]*rotatelogs.RotateLogs)
 	for _, level := range log.AllLevels {
 		// change the type of log level to string
 		levelStr := level.String()
+		upperLevelStr := strings.ToUpper(levelStr)
 		// get the destination of log path
-		levelLogPath := path.Join(logDir, levelStr, logFile)
+		levelLogPath := path.Join(logDir, levelStr,
+			fmt.Sprintf("%s.%s", program, upperLevelStr))
+
+		rotateLogPath := path.Join(logDir, levelStr,
+			fmt.Sprintf("%s.%s.%s.log.%s.%%Y%%m%%d-%%H%%M%%S.%d",
+				program, host, userName, upperLevelStr, pid))
+
 		// create the rotatelogs object
 		Writer, err := rotatelogs.New(
-			levelLogPath+".%Y%m%d_%H%M%S",
+			rotateLogPath,
 			rotatelogs.WithLinkName(levelLogPath),    // 生成软链，指向最新日志文件
 			rotatelogs.WithMaxAge(7*24*time.Hour),    // 文件最大保存时间
 			rotatelogs.WithRotationTime(1*time.Hour), // 日志切割时间间隔
