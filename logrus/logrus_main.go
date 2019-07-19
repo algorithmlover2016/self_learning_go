@@ -30,6 +30,7 @@ var (
 )
 
 func init() {
+
 	LogDir, err := os.Getwd()
 	if err != nil {
 		LogDir = "/tmp/"
@@ -46,14 +47,14 @@ func init() {
 		os.MkdirAll(accessLevelLogDir, 0777)
 	}
 	// add log Hook
-	AccessLogger.AddHook(newLfsHook(path.Join(LogDir, AccessLogDir), AccessLogFilename, AccessLogger, true))
+	AccessLogger.AddHook(newLfsHook(path.Join(LogDir, AccessLogDir), AccessLogFilename, true))
 	// set logLevel
 	AccessLogger.SetLevel(log.TraceLevel)
-	Log.AddHook(newLfsHook(LogDir, LogFilename, Log, false))
+	Log.AddHook(newLfsHook(LogDir, LogFilename, false))
 	Log.SetLevel(log.TraceLevel)
 }
 
-func newLfsHook(logDir string, logFile string, logInstance *log.Logger, color bool) log.Hook {
+func newLfsHook(logDir string, logFile string, color bool) log.Hook {
 	// make a map to save the logLevel -> rotatelogs.RotateLogs object
 	logPathWriterMap := make(map[string]*rotatelogs.RotateLogs)
 	for _, level := range log.AllLevels {
@@ -63,7 +64,7 @@ func newLfsHook(logDir string, logFile string, logInstance *log.Logger, color bo
 		levelLogPath := path.Join(logDir, levelStr, logFile)
 		// create the rotatelogs object
 		Writer, err := rotatelogs.New(
-			levelLogPath+".%Y%m%d%H%M",
+			levelLogPath+".%Y%m%d_%H%M%S",
 			rotatelogs.WithLinkName(levelLogPath),    // 生成软链，指向最新日志文件
 			rotatelogs.WithMaxAge(7*24*time.Hour),    // 文件最大保存时间
 			rotatelogs.WithRotationTime(1*time.Hour), // 日志切割时间间隔
@@ -83,7 +84,8 @@ func newLfsHook(logDir string, logFile string, logInstance *log.Logger, color bo
 		log.ErrorLevel: logPathWriterMap[log.ErrorLevel.String()],
 		log.FatalLevel: logPathWriterMap[log.FatalLevel.String()],
 		log.PanicLevel: logPathWriterMap[log.PanicLevel.String()],
-	}, &log.TextFormatter{DisableColors: color, DisableLevelTruncation: true})
+	}, &log.TextFormatter{DisableColors: color, DisableLevelTruncation: true,
+		TimestampFormat: "2006-01-02 15:04:05.000"})
 	return lfsHook
 }
 
@@ -91,6 +93,7 @@ func main() {
 	Log.Info("hello world!")
 
 	AccessLogger.Info("access log")
+
 	AccessLogger.WithFields(log.Fields{
 		"animal": "walrus",
 		"size":   10,
