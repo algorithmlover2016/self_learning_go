@@ -32,11 +32,11 @@ var (
 	Log          = log.New()
 
 	// configuration logs
-	LogDir   = "/tmp/"
-	pid      = os.Getpid()
-	program  = filepath.Base(os.Args[0])
-	host     = "unknownhost"
-	userName = "unknownuser"
+	LogDirPtr = flag.String("log_dir", "", "If non-empty, write log files in this directory")
+	pid       = os.Getpid()
+	program   = filepath.Base(os.Args[0])
+	host      = "unknownhost"
+	userName  = "unknownuser"
 )
 
 // shortHostname returns its argument, truncating at the first period.
@@ -61,6 +61,7 @@ func logName(logLevelTag string) (name string) {
 }
 
 func init() {
+	flag.Parse()
 	AccessLogger.SetOutput(ioutil.Discard)
 	Log.SetOutput(ioutil.Discard)
 
@@ -76,8 +77,8 @@ func init() {
 
 	// Sanitize userName since it may contain filepath separators on Windows.
 	userName = strings.Replace(userName, `\`, "_", -1)
+	LogDir := *LogDirPtr
 
-	LogDir = *flag.String("log_dir", "", "If non-empty, write log files in this directory")
 	if len(LogDir) == 0 || strings.HasPrefix(LogDir, ".") {
 		var err error
 		LogDir, err = os.Getwd()
