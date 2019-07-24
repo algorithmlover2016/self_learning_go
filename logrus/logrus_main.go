@@ -160,7 +160,7 @@ func newLfsHook(logDir string, color bool) log.Hook {
 		},
 		SortingFunc: func(keyLists []string) {
 			for index, val := range keyLists {
-				if val == FieldKeyMsg && len(keyLists) > (index+1) {
+				if FieldKeyMsg == val && len(keyLists) > (index+1) {
 					keyLists = append(keyLists[:index], keyLists[index+1:]...)
 					keyLists = append(keyLists, val)
 					break
