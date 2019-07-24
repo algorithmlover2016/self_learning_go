@@ -12,6 +12,7 @@ import (
 	"os/user"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -100,8 +101,10 @@ func init() {
 	AccessLogger.AddHook(newLfsHook(path.Join(LogDir, AccessLogDir), true))
 	// set logLevel
 	AccessLogger.SetLevel(log.TraceLevel)
+	AccessLogger.SetReportCaller(true)
 	Log.AddHook(newLfsHook(LogDir, false))
 	Log.SetLevel(log.TraceLevel)
+	Log.SetReportCaller(true)
 }
 
 func newLfsHook(logDir string, color bool) log.Hook {
@@ -143,7 +146,14 @@ func newLfsHook(logDir string, color bool) log.Hook {
 		log.FatalLevel: logPathWriterMap[log.FatalLevel.String()],
 		log.PanicLevel: logPathWriterMap[log.PanicLevel.String()],
 	}, &log.TextFormatter{DisableColors: color, DisableLevelTruncation: true,
-		TimestampFormat: "2006-01-02 15:04:05.000"})
+		TimestampFormat: "2006-01-02 15:04:05.000",
+		CallerPrettyfier: func(f *runtime.Frame) (string, string) {
+			s := strings.Split(f.Function, ".")
+			funcname := s[len(s)-1]
+			// _, filename := path.Split(f.File)
+			filename := f.File
+			return funcname, filename
+		}})
 	return lfsHook
 }
 
