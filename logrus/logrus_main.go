@@ -26,6 +26,7 @@ const (
 	PanicLogDir string = "panic"
 
 	AccessLogDir string = "access"
+	FieldKeyMsg  string = log.FieldKeyMsg
 )
 
 var (
@@ -145,8 +146,10 @@ func newLfsHook(logDir string, color bool) log.Hook {
 		log.ErrorLevel: logPathWriterMap[log.ErrorLevel.String()],
 		log.FatalLevel: logPathWriterMap[log.FatalLevel.String()],
 		log.PanicLevel: logPathWriterMap[log.PanicLevel.String()],
-	}, &log.TextFormatter{DisableColors: color, DisableLevelTruncation: true,
-		TimestampFormat: "2006-01-02 15:04:05.000",
+	}, &log.TextFormatter{
+		DisableColors:          color,
+		DisableLevelTruncation: true,
+		TimestampFormat:        "2006-01-02 15:04:05.000",
 		// if you donot set CallerPrettyfier, the result is funcname, fmt.Sprintf("%s:%d", f.File, f.line)
 		CallerPrettyfier: func(f *runtime.Frame) (string, string) {
 			s := strings.Split(f.Function, ".")
@@ -154,6 +157,15 @@ func newLfsHook(logDir string, color bool) log.Hook {
 			_, filename := path.Split(f.File)
 			filename = fmt.Sprintf("%s:%d", filename, f.Line)
 			return funcname, filename
+		},
+		SortingFunc: func(keyLists []string) {
+			for index, val := range keyLists {
+				if val == FieldKeyMsg && len(keyLists) > (index+1) {
+					keyLists = append(keyLists[:index], keyLists[index+1:]...)
+					keyLists = append(keyLists, val)
+					break
+				}
+			}
 		},
 	})
 	return lfsHook
