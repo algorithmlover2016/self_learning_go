@@ -147,13 +147,15 @@ func newLfsHook(logDir string, color bool) log.Hook {
 		log.PanicLevel: logPathWriterMap[log.PanicLevel.String()],
 	}, &log.TextFormatter{DisableColors: color, DisableLevelTruncation: true,
 		TimestampFormat: "2006-01-02 15:04:05.000",
+		// if you donot set CallerPrettyfier, the result is funcname, fmt.Sprintf("%s:%d", f.File, f.line)
 		CallerPrettyfier: func(f *runtime.Frame) (string, string) {
 			s := strings.Split(f.Function, ".")
 			funcname := s[len(s)-1]
-			// _, filename := path.Split(f.File)
-			filename := f.File
+			_, filename := path.Split(f.File)
+			filename = fmt.Sprintf("%s:%d", filename, f.Line)
 			return funcname, filename
-		}})
+		},
+	})
 	return lfsHook
 }
 
