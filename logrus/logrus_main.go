@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"github.com/lestrrat/go-file-rotatelogs"
@@ -13,6 +14,7 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -46,6 +48,35 @@ var (
 
 func print(msg string) {
 	fmt.Println(msg)
+}
+func GoID() uint64 {
+	defer func() {
+		if err := recover(); err != nil {
+			fmt.Printf("panic recover:panic info:%v\n", err)
+		}
+	}()
+	b := make([]byte, 64)
+	b = b[:runtime.Stack(b, false)]
+	b = bytes.TrimPrefix(b, []byte("goroutine "))
+	b = b[:bytes.IndexByte(b, ' ')]
+	n, err := strconv.ParseUint(string(b), 10, 64)
+	if err != nil {
+		panic(fmt.Sprintf("cannot get goroutine id: %v", err))
+	}
+	return n
+}
+
+type DefaultFieldHook struct {
+}
+
+func (hook *DefaultFieldHook) Fire(entity *log.Entry) error {
+	entity.Data["goroutine_id"] = GoID()
+	fmt.Println("call go_routine_id")
+	return nil
+}
+func (hook *DefaultFieldHook) Levels() []log.Level {
+	fmt.Println("call go_routine_id levels")
+	return log.AllLevels
 }
 
 // shortHostname returns its argument, truncating at the first period.
@@ -113,10 +144,14 @@ func init() {
 		os.MkdirAll(accessLevelLogDir, 0777)
 	}
 	// add log Hook
+	AccessLogger.AddHook(&DefaultFieldHook{})
 	AccessLogger.AddHook(newLfsHook(path.Join(LogDir, AccessLogDir), true, workDir))
+
 	// set logLevel
 	AccessLogger.SetLevel(log.TraceLevel)
 	AccessLogger.SetReportCaller(true)
+
+	Log.AddHook(&DefaultFieldHook{})
 	Log.AddHook(newLfsHook(LogDir, false, workDir))
 	Log.SetLevel(log.TraceLevel)
 	Log.SetReportCaller(true)
@@ -199,12 +234,12 @@ func main() {
 		"size":   10,
 	}).Trace("A group of walrus emerges from the ocean")
 
-	AccessLogger.WithFields(log.Fields{
+	go AccessLogger.WithFields(log.Fields{
 		"animal": "walrus",
 		"size":   10,
 	}).Debug("A group of walrus emerges from the ocean")
 
-	AccessLogger.WithFields(log.Fields{
+	go AccessLogger.WithFields(log.Fields{
 		"animal": "walrus",
 		"size":   10,
 	}).Info("A group of walrus emerges from the ocean")
@@ -214,12 +249,12 @@ func main() {
 		"size":   10,
 	}).Warn("A group of walrus emerges from the ocean")
 
-	AccessLogger.WithFields(log.Fields{
+	go AccessLogger.WithFields(log.Fields{
 		"animal": "walrus",
 		"size":   10,
 	}).Error("A group of walrus emerges from the ocean")
 
-	Log.WithFields(log.Fields{
+	go Log.WithFields(log.Fields{
 		"omg":    true,
 		"number": 122,
 	}).Trace("The group's number increased tremendously!")
@@ -229,7 +264,7 @@ func main() {
 		"number": 122,
 	}).Debug("The group's number increased tremendously!")
 
-	Log.WithFields(log.Fields{
+	go Log.WithFields(log.Fields{
 		"omg":    true,
 		"number": 122,
 	}).Info("The group's number increased tremendously!")
