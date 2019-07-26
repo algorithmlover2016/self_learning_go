@@ -29,6 +29,9 @@ const (
 	FieldKeyMsg  string = log.FieldKeyMsg
 )
 
+type Fields = log.Fields
+type Name = string
+
 var (
 	AccessLogger = log.New()
 	Log          = log.New()
@@ -40,6 +43,10 @@ var (
 	host      = "unknownhost"
 	userName  = "unknownuser"
 )
+
+func print(msg string) {
+	fmt.Println(msg)
+}
 
 // shortHostname returns its argument, truncating at the first period.
 // For instance, given "www.google.com" it returns "www".
@@ -64,6 +71,13 @@ func logName(logLevelTag string) (name string) {
 
 func init() {
 	flag.Parse()
+
+	workDir, err := os.Getwd()
+	if err != nil {
+		workDir = ""
+	} else {
+		workDir += "/"
+	}
 	AccessLogger.SetOutput(ioutil.Discard)
 	Log.SetOutput(ioutil.Discard)
 
@@ -99,16 +113,16 @@ func init() {
 		os.MkdirAll(accessLevelLogDir, 0777)
 	}
 	// add log Hook
-	AccessLogger.AddHook(newLfsHook(path.Join(LogDir, AccessLogDir), true))
+	AccessLogger.AddHook(newLfsHook(path.Join(LogDir, AccessLogDir), true, workDir))
 	// set logLevel
 	AccessLogger.SetLevel(log.TraceLevel)
 	AccessLogger.SetReportCaller(true)
-	Log.AddHook(newLfsHook(LogDir, false))
+	Log.AddHook(newLfsHook(LogDir, false, workDir))
 	Log.SetLevel(log.TraceLevel)
 	Log.SetReportCaller(true)
 }
 
-func newLfsHook(logDir string, color bool) log.Hook {
+func newLfsHook(logDir string, color bool, workDir string) log.Hook {
 	// make a map to save the logLevel -> rotatelogs.RotateLogs object
 	logPathWriterMap := make(map[string]*rotatelogs.RotateLogs)
 	for _, level := range log.AllLevels {
@@ -154,7 +168,8 @@ func newLfsHook(logDir string, color bool) log.Hook {
 		CallerPrettyfier: func(f *runtime.Frame) (string, string) {
 			s := strings.Split(f.Function, ".")
 			funcname := s[len(s)-1]
-			_, filename := path.Split(f.File)
+			// _, filename := path.Split(f.File)
+			filename := (strings.TrimPrefix(f.File, workDir))
 			filename = fmt.Sprintf("%s:%d", filename, f.Line)
 			return funcname, filename
 		},
@@ -172,6 +187,9 @@ func newLfsHook(logDir string, color bool) log.Hook {
 }
 
 func main() {
+	print(FieldKeyMsg)
+	var aliasName Name = "fafsadfsda"
+	print(aliasName)
 	Log.Info("hello world!")
 
 	AccessLogger.Info("access log")
@@ -221,7 +239,7 @@ func main() {
 		"number": 122,
 	}).Warn("The group's number increased tremendously!")
 
-	Log.WithFields(log.Fields{
+	Log.WithFields(Fields{
 		"omg":    true,
 		"number": 100,
 	}).Fatal("The ice breaks!")
