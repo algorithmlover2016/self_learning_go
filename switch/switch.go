@@ -1,11 +1,14 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 )
 
 func main() {
+	flag.Parse()
+	args := flag.Args()
 	fmt.Println("vim-go")
 	var s byte
 	s = 'a'
@@ -14,6 +17,7 @@ func main() {
 	} else {
 		fmt.Printf("args: %v\n", os.Args[0])
 	}
+	fmt.Printf("args: %v\n", args)
 	switch s {
 	case 'a':
 		fmt.Println("The integer was <= 4")
